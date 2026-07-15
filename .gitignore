@@ -1,0 +1,23 @@
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+*.db-wal
+
+# Compiled binaries (C++)
+*.o
+*.out
+*.exe
+build/
+# Collector executable (no extension, Linux)
+latency_collector
+
+# Python
+__pycache__/
+*.pyc
+
+# Editor temp files
+*~
+*.swp
+.DS_Store
