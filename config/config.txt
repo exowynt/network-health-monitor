@@ -1,0 +1,4 @@
+target=8.8.8.8
+interval_seconds=10
+timeout_seconds=2
+db_path=data/network_health.db
