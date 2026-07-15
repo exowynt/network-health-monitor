@@ -1,7 +1,7 @@
 # Network Health Monitor – Requirements
 
 ## Problem Statement
-Home internet feels unreliable and sometimes slow, but we lack objective data to understand the problem or hold our ISP accountable. This project will continuously monitor connection quality—latency, packet loss, and outages—to provide a factual record of network performance over time. With this data, we can diagnose issues, correlate slow experiences with actual drops, and generate reports for ISP support.
+The internet at home feels unreliable and sometimes can be slow, but we lack objective data to understand the problem or hold our ISP accountable. This project will continuously monitor connection quality and latency, packet loss, and outages in order to provide a factual record of network performance over time. With this data, we can diagnose issues, correlate slow experiences with actual drops, and generate reports for ISP support.
 
 ## Functional Requirements
 
