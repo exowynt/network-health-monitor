@@ -1,0 +1,17 @@
+[Unit]
+Description=Network Health Monitor - Latency Collector
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/pi/network-health-monitor
+ExecStart=/home/pi/network-health-monitor/build/latency_collector
+Restart=on-failure
+RestartSec=10s
+User=pi
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
