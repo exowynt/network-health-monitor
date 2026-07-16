@@ -16,6 +16,7 @@ latency_collector
 # Python
 __pycache__/
 *.pyc
+venv/
 
 # Editor temp files
 *~
