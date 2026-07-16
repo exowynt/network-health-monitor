@@ -234,28 +234,31 @@ function updateSummary(history) {
     let avgLatency = 0;
     let maxLatency = 0;
     let totalLoss = 0;
+if (history.pings[0].avg_latency !== undefined) {
+    // Aggregated data (24h, 7d, 30d)
+    let sumWeighted = 0;
+    let totalSamples = 0;
+    let overallMaxLatency = 0;
+    let totalSamplesFailed = 0;
+    let totalSamplesAll = 0;
 
-    if (history.pings[0].avg_latency !== undefined) {
-        // Aggregated data (24h, 7d, 30d)
-        let sumWeighted = 0;
-        let totalSamples = 0;
-        let maxAvg = 0;
-        let totalSamplesFailed = 0;
-        let totalSamplesAll = 0;
+    history.pings.forEach(bucket => {
+        if (bucket.avg_latency !== null) {
+            sumWeighted += bucket.avg_latency * bucket.sample_count;
+            totalSamples += bucket.sample_count;
+        }
+        if (bucket.max_latency !== null && bucket.max_latency > overallMaxLatency) {
+            overallMaxLatency = bucket.max_latency;
+        }
+        totalSamplesAll += bucket.sample_count;
+        totalSamplesFailed += (bucket.packet_loss / 100) * bucket.sample_count;
+    });
 
-        history.pings.forEach(bucket => {
-            if (bucket.avg_latency !== null) {
-                sumWeighted += bucket.avg_latency * bucket.sample_count;
-                totalSamples += bucket.sample_count;
-                if (bucket.avg_latency > maxAvg) maxAvg = bucket.avg_latency;
-            }
-            totalSamplesAll += bucket.sample_count;
-            totalSamplesFailed += (bucket.packet_loss / 100) * bucket.sample_count;
-        });
-        avgLatency = totalSamples > 0 ? sumWeighted / totalSamples : 0;
-        maxLatency = maxAvg;
-        totalLoss = totalSamplesAll > 0 ? (totalSamplesFailed / totalSamplesAll) * 100 : 0;
-    } else {
+    avgLatency = totalSamples > 0 ? sumWeighted / totalSamples : 0;
+    maxLatency = overallMaxLatency;  // true max across all raw pings
+    totalLoss = totalSamplesAll > 0 ? (totalSamplesFailed / totalSamplesAll) * 100 : 0;
+}
+ else {
         // Raw data (1h)
         let sum = 0, count = 0, max = 0, failed = 0;
         history.pings.forEach(p => {

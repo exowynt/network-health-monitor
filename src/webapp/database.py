@@ -47,20 +47,18 @@ def get_ping_history(range_key):
     """
     Return aggregated ping data for the given range.
     range_key: '1h', '24h', '7d', '30d'
-    Returns: list of dicts with keys: time_bucket, avg_latency, packet_loss, sample_count
+    Returns: list of dicts with keys depending on aggregation level.
     """
-    # Determine the time filter and bucket size
     ranges = {
         '1h':  ('-1 hour',   0),   # raw data, no aggregation
-        '24h': ('-1 day',    60),   # 1-minute buckets
-        '7d':  ('-7 days',   300),  # 5-minute buckets
-        '30d': ('-30 days',  900)   # 15-minute buckets
+        '24h': ('-1 day',    60),  # 1-minute buckets
+        '7d':  ('-7 days',   300), # 5-minute buckets
+        '30d': ('-30 days',  900)  # 15-minute buckets
     }
     if range_key not in ranges:
         return []
 
     time_filter, bucket_seconds = ranges[range_key]
-
     conn = get_connection()
     cursor = conn.cursor()
 
@@ -74,17 +72,16 @@ def get_ping_history(range_key):
         """, (time_filter,))
         rows = cursor.fetchall()
         conn.close()
-        # Convert to list of dicts
         return [{'timestamp': r['timestamp'],
                  'latency_ms': r['latency_ms'],
                  'success': r['success']} for r in rows]
     else:
-        # Aggregate into time buckets using epoch flooring
-        # SQLite's strftime('%s', timestamp) gives Unix epoch.
+        # Aggregate into time buckets
         cursor.execute(f"""
             SELECT
                 datetime((strftime('%s', timestamp) / {bucket_seconds}) * {bucket_seconds}, 'unixepoch') as bucket,
                 AVG(CASE WHEN success = 1 THEN latency_ms END) as avg_latency,
+                MAX(CASE WHEN success = 1 THEN latency_ms END) as max_latency,
                 SUM(CASE WHEN success = 0 THEN 1 ELSE 0 END) * 100.0 / COUNT(*) as packet_loss,
                 COUNT(*) as sample_count
             FROM ping_results
@@ -96,9 +93,9 @@ def get_ping_history(range_key):
         conn.close()
         return [{'time_bucket': r['bucket'],
                  'avg_latency': round(r['avg_latency'], 2) if r['avg_latency'] is not None else None,
+                 'max_latency': round(r['max_latency'], 2) if r['max_latency'] is not None else None,
                  'packet_loss': round(r['packet_loss'], 2),
                  'sample_count': r['sample_count']} for r in rows]
-
 def get_outages_in_range(range_key):
     """Return outages that overlap the selected time range."""
     ranges = {
