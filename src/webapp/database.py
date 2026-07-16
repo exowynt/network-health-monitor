@@ -43,3 +43,83 @@ def get_recent_outages(limit=5):
     rows = cursor.fetchall()
     conn.close()
     return [dict(r) for r in rows]
+def get_ping_history(range_key):
+    """
+    Return aggregated ping data for the given range.
+    range_key: '1h', '24h', '7d', '30d'
+    Returns: list of dicts with keys: time_bucket, avg_latency, packet_loss, sample_count
+    """
+    # Determine the time filter and bucket size
+    ranges = {
+        '1h':  ('-1 hour',   0),   # raw data, no aggregation
+        '24h': ('-1 day',    60),   # 1-minute buckets
+        '7d':  ('-7 days',   300),  # 5-minute buckets
+        '30d': ('-30 days',  900)   # 15-minute buckets
+    }
+    if range_key not in ranges:
+        return []
+
+    time_filter, bucket_seconds = ranges[range_key]
+
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    if bucket_seconds == 0:
+        # Return raw pings for 1h (no aggregation)
+        cursor.execute("""
+            SELECT timestamp, latency_ms, success
+            FROM ping_results
+            WHERE timestamp >= datetime('now', ?)
+            ORDER BY timestamp ASC
+        """, (time_filter,))
+        rows = cursor.fetchall()
+        conn.close()
+        # Convert to list of dicts
+        return [{'timestamp': r['timestamp'],
+                 'latency_ms': r['latency_ms'],
+                 'success': r['success']} for r in rows]
+    else:
+        # Aggregate into time buckets using epoch flooring
+        # SQLite's strftime('%s', timestamp) gives Unix epoch.
+        cursor.execute(f"""
+            SELECT
+                datetime((strftime('%s', timestamp) / {bucket_seconds}) * {bucket_seconds}, 'unixepoch') as bucket,
+                AVG(CASE WHEN success = 1 THEN latency_ms END) as avg_latency,
+                SUM(CASE WHEN success = 0 THEN 1 ELSE 0 END) * 100.0 / COUNT(*) as packet_loss,
+                COUNT(*) as sample_count
+            FROM ping_results
+            WHERE timestamp >= datetime('now', ?)
+            GROUP BY bucket
+            ORDER BY bucket ASC
+        """, (time_filter,))
+        rows = cursor.fetchall()
+        conn.close()
+        return [{'time_bucket': r['bucket'],
+                 'avg_latency': round(r['avg_latency'], 2) if r['avg_latency'] is not None else None,
+                 'packet_loss': round(r['packet_loss'], 2),
+                 'sample_count': r['sample_count']} for r in rows]
+
+def get_outages_in_range(range_key):
+    """Return outages that overlap the selected time range."""
+    ranges = {
+        '1h':  '-1 hour',
+        '24h': '-1 day',
+        '7d':  '-7 days',
+        '30d': '-30 days'
+    }
+    if range_key not in ranges:
+        return []
+
+    time_filter = ranges[range_key]
+    conn = get_connection()
+    cursor = conn.cursor()
+    # Outage overlaps if start_time is within range OR (start_time before range and end_time is NULL or within range)
+    cursor.execute("""
+        SELECT * FROM outages
+        WHERE (start_time >= datetime('now', ?))
+           OR (start_time < datetime('now', ?) AND (end_time IS NULL OR end_time >= datetime('now', ?)))
+        ORDER BY start_time DESC
+    """, (time_filter, time_filter, time_filter))
+    rows = cursor.fetchall()
+    conn.close()
+    return [dict(r) for r in rows]

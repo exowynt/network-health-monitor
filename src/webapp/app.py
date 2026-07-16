@@ -1,4 +1,4 @@
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
 import database  # our new module
 
 app = Flask(__name__)
@@ -35,6 +35,22 @@ def api_status():
         'latest_ping': latest,
         'outage_active': outage_active
     })
+@app.route('/api/history')
+def api_history():
+    # Get the range from query parameter, default to '1h'
+    range_key = request.args.get('range', '1h')
+    # Validate allowed values
+    allowed = {'1h', '24h', '7d', '30d'}
+    if range_key not in allowed:
+        range_key = '1h'
 
+    ping_data = database.get_ping_history(range_key)
+    outages = database.get_outages_in_range(range_key)
+
+    return jsonify({
+        'range': range_key,
+        'pings': ping_data,
+        'outages': outages
+    })
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
