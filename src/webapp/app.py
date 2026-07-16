@@ -1,11 +1,11 @@
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, render_template
 import database  # our new module
 
 app = Flask(__name__)
 
 @app.route('/')
 def index():
-    return 'Hello, dashboard! (API is at /api/status)'
+    return render_template('index.html')
 
 @app.route('/api/status')
 def api_status():
