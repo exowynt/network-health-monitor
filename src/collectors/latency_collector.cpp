@@ -8,7 +8,6 @@
 #include <sqlite3.h>
 #include <fstream>
 #include <sstream>
-#include <algorithm>
 // ------------------------------------------------------------
 // Execute a SQL statement that doesn't return data (INSERT, UPDATE, CREATE)
 // ------------------------------------------------------------
